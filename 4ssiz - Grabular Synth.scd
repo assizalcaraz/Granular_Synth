@@ -92,20 +92,27 @@ s.waitForBoot({
 
     // Función para cargar archivo de audio
     ~loadSample = { |path|
-        var sampleSize;
+        var sampleSize, step, indices;
         if (path.notNil) {
             if (~b.notNil) { ~b.free };
             ~b = Buffer.read(s, path, action: {
                 "Sample cargado: %".format(path.basename).postln;
                 
-                // Cargar datos de la forma de onda (muestreo para visualización)
-                sampleSize = min(~b.numFrames, 2000); // Reducir a 2000 muestras para evitar overflow
+                // Cargar datos de la forma de onda (muestreo representativo de todo el sample)
+                sampleSize = min(~b.numFrames, 5000); // Reducir a 5000 muestras para evitar overflow
+                
+                // Calcular step para muestrear todo el buffer, no solo el inicio
+                step = max(1, (~b.numFrames / sampleSize).asInteger);
+                indices = Array.series(sampleSize) * step;
                 
                 // Usar try-catch para manejar errores de buffer
                 try {
+                    // Cargar solo las muestras necesarias para evitar overflow
                     ~b.getn(0, sampleSize, { |data|
                         ~waveformData = data;
-                        "Datos de forma de onda cargados: % muestras de % total".format(data.size, ~b.numFrames).postln;
+                        "Datos de forma de onda cargados: % muestras de % total".format(
+                            data.size, ~b.numFrames
+                        ).postln;
                         
                         // Refrescar visualizador de onda
                         if (~waveformView.notNil) {
@@ -293,26 +300,28 @@ s.waitForBoot({
             Pen.fillRect(Rect(0, 0, width, height));
             
             
-            if (~waveformData.notNil and: { ~waveformData.size > 0 }) {
+            
+            // Dibujar línea central siempre
+            Pen.strokeColor = Color.grey(0.5);
+            Pen.width = 1;
+            Pen.moveTo(0@(height/2));
+            Pen.lineTo(width@(height/2));
+            Pen.stroke;
+            
+            if (~waveformData.notNil and: { ~waveformData.size > 0 } and: { ~b.notNil }) {
                 // Usar datos reales de la forma de onda
-                stepSize = ~waveformData.size / width;
-                
-                // Dibujar línea central
-                Pen.strokeColor = Color.grey(0.5);
-                Pen.width = 1;
-                Pen.moveTo(0@(height/2));
-                Pen.lineTo(width@(height/2));
-                Pen.stroke;
+                stepSize = ~b.numFrames / width;
                 
                 // Dibujar forma de onda real del sample
                 Pen.strokeColor = Color.white;
                 Pen.width = 1;
                 
-                // Dibujar forma de onda real usando datos cargados
+                // Dibujar forma de onda real usando datos muestreados
                 width.do { |x|
-                    var frameIndex = (x * stepSize).asInteger;
-                    var sample = if (frameIndex < ~waveformData.size) {
-                        ~waveformData[frameIndex]
+                    // Mapear directamente x a índice en los datos muestreados
+                    var dataIndex = (x * ~waveformData.size / width).asInteger;
+                    var sample = if (dataIndex >= 0 and: { dataIndex < ~waveformData.size }) {
+                        ~waveformData[dataIndex]
                     } { 0 };
                     var y = height/2 + (sample * height * 0.4);
                     
@@ -323,55 +332,46 @@ s.waitForBoot({
                     };
                 };
                 Pen.stroke;
-                
-                // Dibujar segmento seleccionado
-                startX = ~segmentStart * width;
-                endX = ~segmentEnd * width;
-                
-                Pen.fillColor = Color.yellow.alpha_(0.3);
-                Pen.fillRect(Rect(startX, 0, endX - startX, height));
-                
-                // Dibujar líneas de selección
-                Pen.strokeColor = Color.yellow;
-                Pen.width = 2;
-                Pen.moveTo(startX@0);
-                Pen.lineTo(startX@height);
-                Pen.stroke;
-                
-                Pen.moveTo(endX@0);
-                Pen.lineTo(endX@height);
-                Pen.stroke;
-                
-                // Información del segmento
-                Pen.fillColor = Color.white;
-                Pen.font = Font("Arial", 12);
-                Pen.stringAtPoint("Inicio: %".format(~segmentStart.round(0.01)), 10@10);
-                Pen.stringAtPoint("Fin: %".format(~segmentEnd.round(0.01)), 10@30);
-                Pen.stringAtPoint("Duración: %".format((~segmentEnd - ~segmentStart).round(0.01)), 10@50);
             } {
-                // Sin datos de forma de onda - mostrar mensaje
-                Pen.fillColor = Color.grey(0.5);
-                Pen.font = Font("Arial", 16);
-                Pen.stringAtPoint("Cargando forma de onda...", 200@90);
+                // Sin datos de forma de onda - dibujar forma de onda de prueba
+                Pen.strokeColor = Color.cyan;
+                Pen.width = 1;
                 
-                // Dibujar segmento seleccionado incluso sin datos
-                startX = ~segmentStart * width;
-                endX = ~segmentEnd * width;
-                
-                Pen.fillColor = Color.yellow.alpha_(0.3);
-                Pen.fillRect(Rect(startX, 0, endX - startX, height));
-                
-                // Dibujar líneas de selección
-                Pen.strokeColor = Color.yellow;
-                Pen.width = 2;
-                Pen.moveTo(startX@0);
-                Pen.lineTo(startX@height);
-                Pen.stroke;
-                
-                Pen.moveTo(endX@0);
-                Pen.lineTo(endX@height);
+                width.do { |x|
+                    var y = height/2 + (sin(x * 0.02) * height * 0.3);
+                    if (x == 0) {
+                        Pen.moveTo(x@y);
+                    } {
+                        Pen.lineTo(x@y);
+                    };
+                };
                 Pen.stroke;
             };
+            
+            // Dibujar segmento seleccionado SIEMPRE (fuera del bloque condicional)
+            startX = ~segmentStart * width;
+            endX = ~segmentEnd * width;
+            
+            Pen.fillColor = Color.yellow.alpha_(0.3);
+            Pen.fillRect(Rect(startX, 0, endX - startX, height));
+            
+            // Dibujar líneas de selección
+            Pen.strokeColor = Color.yellow;
+            Pen.width = 2;
+            Pen.moveTo(startX@0);
+            Pen.lineTo(startX@height);
+            Pen.stroke;
+            
+            Pen.moveTo(endX@0);
+            Pen.lineTo(endX@height);
+            Pen.stroke;
+            
+            // Información del segmento
+            Pen.fillColor = Color.white;
+            Pen.font = Font("Arial", 12);
+            Pen.stringAtPoint("Inicio: %".format(~segmentStart.round(0.01)), 10@10);
+            Pen.stringAtPoint("Fin: %".format(~segmentEnd.round(0.01)), 10@30);
+            Pen.stringAtPoint("Duración: %".format((~segmentEnd - ~segmentStart).round(0.01)), 10@50);
         };
         
         // Función de dibujo separada
