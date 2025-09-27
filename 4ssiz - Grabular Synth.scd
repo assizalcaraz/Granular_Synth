@@ -98,38 +98,69 @@ s.waitForBoot({
             ~b = Buffer.read(s, path, action: {
                 "Sample cargado: %".format(path.basename).postln;
                 
+                // Esperar un momento para que el buffer se cargue completamente
+                { 
                 // Cargar datos de la forma de onda (muestreo representativo de todo el sample)
-                sampleSize = min(~b.numFrames, 5000); // Reducir a 5000 muestras para evitar overflow
+                // Para un sample de 16 segundos a 48kHz = 768,000 muestras
+                // Cargar una muestra representativa de todo el sample para visualización
+                sampleSize = min(~b.numFrames, 10000); // Aumentar para mejor representación
                 
                 // Calcular step para muestrear todo el buffer, no solo el inicio
                 step = max(1, (~b.numFrames / sampleSize).asInteger);
                 indices = Array.series(sampleSize) * step;
                 
-                // Usar try-catch para manejar errores de buffer
-                try {
-                    // Cargar solo las muestras necesarias para evitar overflow
-                    ~b.getn(0, sampleSize, { |data|
-                        ~waveformData = data;
-                        "Datos de forma de onda cargados: % muestras de % total".format(
-                            data.size, ~b.numFrames
-                        ).postln;
+                    // Cargar datos de forma de onda de forma más simple y confiable
+                    try {
+                        // Cargar una muestra representativa del buffer completo
+                        // Usar loadToFloatArray que es más confiable que getn
+                        ~b.loadToFloatArray(0, ~b.numFrames, { |data|
+                            if (data.notNil and: { data.size > 0 }) {
+                                // Reducir la resolución para visualización
+                                var step = max(1, (data.size / sampleSize).asInteger);
+                                var reducedData = Array.new(sampleSize);
+                                
+                                // Muestrear los datos de forma distribuida
+                                for (0, sampleSize - 1, { |i|
+                                    var index = i * step;
+                                    if (index < data.size) {
+                                        reducedData.add(data[index]);
+                                    };
+                                });
+                                
+                                ~waveformData = reducedData;
+                                "Datos de forma de onda cargados: % muestras de % total (%.1f seg)".format(
+                                    reducedData.size, ~b.numFrames, ~b.numFrames / 48000
+                                ).postln;
+                                
+                                // Refrescar visualizador de onda
+                                if (~waveformView.notNil) {
+                                    { ~waveformView.refresh }.defer;
+                                };
+                            } {
+                                "Error: No se pudieron cargar los datos del buffer".postln;
+                                // Crear datos de forma de onda de prueba
+                                ~waveformData = Array.fill(1000, { |i| sin(i * 0.1) });
+                                "Usando forma de onda de prueba".postln;
+                                
+                                // Refrescar visualizador de onda
+                                if (~waveformView.notNil) {
+                                    { ~waveformView.refresh }.defer;
+                                };
+                            };
+                        });
+                        
+                    } { |error|
+                        "Error cargando datos de forma de onda: %".format(error).postln;
+                        // Crear datos de forma de onda de prueba
+                        ~waveformData = Array.fill(1000, { |i| sin(i * 0.1) });
+                        "Usando forma de onda de prueba".postln;
                         
                         // Refrescar visualizador de onda
                         if (~waveformView.notNil) {
                             { ~waveformView.refresh }.defer;
                         };
-                    });
-                } { |error|
-                    "Error cargando datos de forma de onda: %".format(error).postln;
-                    // Crear datos de forma de onda de prueba
-                    ~waveformData = Array.fill(1000, { |i| sin(i * 0.1) });
-                    "Usando forma de onda de prueba".postln;
-                    
-                    // Refrescar visualizador de onda
-                    if (~waveformView.notNil) {
-                        { ~waveformView.refresh }.defer;
                     };
-                };
+                }.defer; // Ejecutar después de un frame
                 
                 if (~synth.notNil) { ~synth.free };
                 ~synth = Synth(\granularLoFi, [
@@ -279,9 +310,53 @@ s.waitForBoot({
         // Visualizador de onda (parte superior)
         waveformView = UserView(~mainWin, Rect(320, 10, 580, 200))
             .background_(Color.grey(0.1))
-            .canFocus_(false);
+            .canFocus_(true);
+        
+        // Variables para drag and drop
+        ~isDragging = false;
+        ~dragStartX = 0;
+        ~dragStartSegment = 0;
         
         ~waveformView = waveformView;
+        
+        // Eventos de mouse para drag and drop del segmento
+        waveformView.mouseDownAction = { |view, x, y, modifiers, buttonNumber, clickCount|
+            if (buttonNumber == 0) { // Botón izquierdo
+                ~isDragging = true;
+                ~dragStartX = x;
+                ~dragStartSegment = ~segmentStart;
+                "Iniciando drag del segmento".postln;
+            };
+        };
+        
+        waveformView.mouseMoveAction = { |view, x, y, modifiers|
+            if (~isDragging) {
+                var deltaX = x - ~dragStartX;
+                var width = view.bounds.width;
+                var deltaTime = deltaX / width; // Convertir píxeles a tiempo normalizado
+                var newStart = ~dragStartSegment + deltaTime;
+                var segmentWidth = ~segmentEnd - ~segmentStart;
+                
+                // Mantener el segmento dentro de los límites
+                newStart = max(0, min(1 - segmentWidth, newStart));
+                ~segmentStart = newStart;
+                ~segmentEnd = newStart + segmentWidth;
+                
+                // Actualizar sintetizador y visualización
+                if (~synth.notNil) { 
+                    ~synth.set(\segmentStart, ~segmentStart);
+                    ~synth.set(\segmentEnd, ~segmentEnd);
+                };
+                { ~waveformView.refresh }.defer;
+            };
+        };
+        
+        waveformView.mouseUpAction = { |view, x, y, modifiers, buttonNumber|
+            if (buttonNumber == 0) { // Botón izquierdo
+                ~isDragging = false;
+                "Drag del segmento completado".postln;
+            };
+        };
         
         // Panel de visualización de granos (parte inferior)
         canvas = UserView(~mainWin, Rect(320, 220, 580, 370))
@@ -310,7 +385,9 @@ s.waitForBoot({
             
             if (~waveformData.notNil and: { ~waveformData.size > 0 } and: { ~b.notNil }) {
                 // Usar datos reales de la forma de onda
-                stepSize = ~b.numFrames / width;
+                // La forma de onda representa TODO el sample (16 segundos)
+                // El segmento amarillo muestra la parte que se procesará
+                stepSize = ~waveformData.size / width;
                 
                 // Dibujar forma de onda real del sample
                 Pen.strokeColor = Color.white;
@@ -349,14 +426,25 @@ s.waitForBoot({
             };
             
             // Dibujar segmento seleccionado SIEMPRE (fuera del bloque condicional)
+            // El segmento representa la parte del sample que se procesará (máximo 1 segundo)
+            // pero se muestra sobre la forma de onda completa
             startX = ~segmentStart * width;
             endX = ~segmentEnd * width;
             
             Pen.fillColor = Color.yellow.alpha_(0.3);
+            // Dibujar segmento seleccionado con feedback visual
+            if (~isDragging) {
+                // Durante el drag, usar color más brillante
+                Pen.fillColor = Color.new(1, 1, 0, 0.5); // Amarillo más opaco
+                Pen.strokeColor = Color.new(1, 1, 0, 0.8); // Borde más brillante
+            } {
+                Pen.fillColor = Color.new(1, 1, 0, 0.3); // Amarillo semi-transparente
+                Pen.strokeColor = Color.yellow; // Borde normal
+            };
+            
             Pen.fillRect(Rect(startX, 0, endX - startX, height));
             
             // Dibujar líneas de selección
-            Pen.strokeColor = Color.yellow;
             Pen.width = 2;
             Pen.moveTo(startX@0);
             Pen.lineTo(startX@height);
@@ -369,9 +457,26 @@ s.waitForBoot({
             // Información del segmento
             Pen.fillColor = Color.white;
             Pen.font = Font("Arial", 12);
-            Pen.stringAtPoint("Inicio: %".format(~segmentStart.round(0.01)), 10@10);
-            Pen.stringAtPoint("Fin: %".format(~segmentEnd.round(0.01)), 10@30);
-            Pen.stringAtPoint("Duración: %".format((~segmentEnd - ~segmentStart).round(0.01)), 10@50);
+            if (~b.notNil and: { ~b.numFrames.notNil }) {
+                var sampleRate = 48000; // Usar sample rate fijo para evitar nil
+                var totalDuration = ~b.numFrames / sampleRate;
+                var segmentStartTime = ~segmentStart * totalDuration;
+                var segmentEndTime = ~segmentEnd * totalDuration;
+                var segmentDuration = segmentEndTime - segmentStartTime;
+                
+                Pen.stringAtPoint("Segmento: %.1f - %.1f seg".format(segmentStartTime, segmentEndTime), 10@10);
+                Pen.stringAtPoint("Duración: %.1f seg".format(segmentDuration), 10@30);
+                Pen.stringAtPoint("Sample: %.1f seg".format(totalDuration), 10@50);
+                
+                // Instrucciones de uso
+                Pen.fillColor = Color.grey(0.7);
+                Pen.font = Font("Arial", 10);
+                Pen.stringAtPoint("Arrastra el segmento amarillo para navegar", 10@(height-30));
+                Pen.stringAtPoint("o usa los sliders de Inicio/Fin", 10@(height-15));
+            } {
+                Pen.stringAtPoint("Segmento: % - %".format(~segmentStart.round(0.01), ~segmentEnd.round(0.01)), 10@10);
+                Pen.stringAtPoint("Duración: %".format((~segmentEnd - ~segmentStart).round(0.01)), 10@30);
+            };
         };
         
         // Función de dibujo separada
