@@ -1,0 +1,89 @@
+Lucas Samaruga 2025-06-28
+Universidad Nacional de las Artes / ATAM
+Teoría de Audio Digital 1
+Consigna de Trabajo Final
+Introducción
+El presente trabajo final tiene como objetivo la integración y profundización de los conocimientos
+adquiridos a lo largo del curso. Se busca que el estudiante demuestre una comprensión sólida de
+los fundamentos teóricos y prácticos del audio digital, aplicando los conceptos vistos en las
+distintas unidades del programa en un proyecto de investigación y/o desarrollo personal.
+El trabajo consistirá en la elaboración de una monografía que aborde, desde una perspectiva
+teórica, analítica o práctica, alguno de los ejes temáticos centrales de la materia: la codificación y
+representación digital del sonido, las técnicas de síntesis y procesamiento, o los protocolos de
+control. Deberá reflejar no solo la comprensión de los aspectos técnicos, sino también una reflexión
+crítico-creativa sobre sus implicancias en el campo de la producción musical y el arte sonoro.
+Modalidad
+El/la estudiante deberá optar por una de las siguientes tres modalidades de trabajo:
+Opción 1: Análisis Monográfico de Herramientas de Software/Hardware
+Esta opción consiste en la selección de un software (DAW, plugin, instrumento virtual) o hardware
+(sintetizador) que implemente de manera relevante alguno de los principios estudiados en la
+materia.
+Contenidos a vincular: El análisis debe centrarse en cómo la herramienta aplica conceptos de las
+Unidades 1 y 2. Por ejemplo:
+Analizar un sampler y su relación con la cuantización y el dithering.
+Describir el funcionamiento de un sintetizador FM comercial y comparar su implementación
+con la teoría de Chowning.
+Investigar un plugin de generación de sonido y las técas de sínteis que utiliza.
+Desarrollo: La monografía debe incluir una descripción técnica de la herramienta, un análisis
+detallado de su implementación de los principios de audio digital elegidos y ejemplos sonoros
+(propios o de terceros) que ilustren su funcionamiento y potencial creativo-musical utilizando las
+técnicas de control vistas en la cursada (MIDI/OSC).
+Opción 2: Implementación y Documentación de un Sintetizador Híbrido
+Esta modalidad se enfoca en la aplicación práctica de las técnicas de síntesis estudiadas, utilizando
+para ello un entorno de programación o un lenguaje de programación de audio como
+SuperCollider, Csound, Pure Data o Max/MSP.
+1/3
+Lucas Samaruga 2025-06-28
+Contenidos a vincular: El trabajo debe implementar de forma práctica alguna de las técnicas de
+síntesis de la Unidad 2.
+Desarrollo: El/la estudiante deberá:
+1. Programar un algoritmo que genere sonido utilizando las técnicas de síntesis elegidas.
+2. Documentar exhaustivamente el código o el patch, explicando cada parámetro y su correlato
+con la teoría (ej. frecuencia de muestreo, osciladores, moduladores, etc.).
+3. Redactar una monografía que fundamente teóricamente el trabajo práctico, describa el
+proceso de implementación, los desafíos encontrados y las decisiones tomadas.
+4. Incluir una breve composición o estudio sonoro original que demuestre las posibilidades
+expresivas del sintetizador desarrollado utilizando las técnicas de control vistas en la cursada
+(MIDI/OSC).
+Opción 3: Investigación Teórica
+Esta opción propone un trabajo de investigación puramente monográfico sobre un tema específico
+del programa, desarrollando una hipótesis o un análisis comparativo.
+Contenidos a vincular: El tema puede ser extraído de cualquiera de las cuatro unidades. Por
+ejemplo:
+MIDI vs. OSC: Un análisis comparativo de la estructura, ventajas y desventajas de ambos
+protocolos en la música contemporánea, considerando conceptos como la topología cliente-
+servidor, los tipos de datos y la representación temporal.
+Compresión de audio: Una investigación profunda sobre los métodos de compresión con y
+sin pérdida, analizando los artefactos sónicos que introduce cada uno y su impacto en la
+percepción auditiva.
+El Aliasing como recurso estético: Un ensayo sobre el uso creativo del error digital,
+partiendo del Teorema de Muestreo de Nyquist-Shannon y explorando su aplicación en
+géneros musicales específicos.
+Desarrollo: La monografía deberá presentar el estado del arte sobre el tema, desarrollar un
+argumento central con fundamentos teóricos sólidos y presentar conclusiones pertinentes,
+utilizando la bibliografía del curso y fuentes académicas adicionales.
+Requisitos Generales de Presentación
+Independientemente de la opción elegida, el trabajo final deberá:
+1. Formato: Ser presentado como una monografía en formato PDF.
+2. Estructura: Contar con carátula, índice, introducción (presentando el tema y los objetivos),
+desarrollo (organizado en secciones), conclusión y bibliografía con rigurosidad académica.
+3. Referencias y Bibliografía: Utilizar citas y referencias bibliográficas para todas las fuentes
+consultadas, incluyendo la bibliografía obligatoria del curso.
+4. Extensión: Se sugiere una extensión de entre 2000 y 4000 palabras.
+5. Anexos (si corresponde): Se deberá entregar una carpeta comprimida con el código o patch
+funcional y los archivos de audio generados.
+2/3
+Lucas Samaruga 2025-06-28
+Criterios de Evaluación y Fecha de Entrega
+Comprensión y aplicación de conceptos: Se evaluará la correcta aplicación de los
+contenidos teóricos del curso en el análisis o la implementación práctica.
+Profundidad y rigurosidad: Calidad de la investigación, solidez de los argumentos y
+precisión técnica.
+Claridad y coherencia: Organización lógica de las ideas y redacción académica.
+Originalidad y aporte personal: Capacidad para abordar el tema desde una perspectiva
+propia y creativa.
+Cumplimiento de los requisitos formales: Adecuación a la estructura, formato y pautas de
+entrega solicitadas.
+Fecha de entrega: El trabajo deberá ser entregado en un lapso de tres meses luego de terminada
+la cursada.
+3/3

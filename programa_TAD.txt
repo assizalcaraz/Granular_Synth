@@ -1,0 +1,71 @@
+Teoría de Audio Digital 1
+Universidad Nacional de las Artes
+Nivel: I
+Modalidad del curso: teórico / práctico.
+Carácter: obligatorio.
+Carga Horaria: 40 hs.
+Correlatividades: no requiere.
+Programa
+Este curso es una introducción a los fundamentos informáticos del audio digital, los protocolos de
+control de información musical y diferentes técnicas de síntesis de sonido. Provee los fundamentos
+técnicos necesarios para la programación de audio y el siguiente nivel de teoría del audio digital. La
+organización de los contenidos abarca tres ejes fundamentales: la representación digital del sonido,
+la generación de sonido por síntesis numérica y las distintas representaciones de los datos de control
+y eventos sonoros.
+Objetivos
+• Comprender los fundamentos teóricos del muestreo digital de sonido y la codificación
+digital de señales de audio.
+• Comprender los fundamentos teóricos de los protocolo MIDI, OSC y la diferencia entre
+estándar e implementación.
+• Comprender fundamentos teóricos de las principales técnicas de procesamiento y síntesis de
+señales de audio.
+Contenidos
+Unidad 1 - Codificación
+Representación de la señal digital en el dominio del tiempo (forma de onda) y de la frecuencia
+(espectro). Procedimientos y parámetros del muestreo de sonido. Frecuencia de muestreo, teorema
+de muestreo y aliasing. Cuantización uniforme y no-uniforme. Error de cuantización, distorsión
+armónica, dithering y noise shaping. Métodos de compresión de audio con y sin pérdida.
+Unidad 2 - Técnicas de síntesis y procesamiento
+Síntesis Aditiva: Osciladores digitales y sumatorias discretas. Síntesis por frecuencia y amplitud
+modulada. Síntesis granular. Síntesis no-lineal. Síntesis por modelado físico. Osciladores de baja
+frecuencia.
+Unidad 3 - Protocolo MIDI
+Generalidades sobre MIDI: Estructura general, baud rate, canales MIDI. Especificación MIDI 1.0.
+Estructuras de los mensaje MIDI. Tipos de mensaje MIDI. Sincronización MIDI. Métodos y
+códigos principales: MIDI Clock, FSK y MTC. MTC y código SMPTE. Estructura de los archivos
+MIDI estandar (MIDI File).
+Unidad 4 - Protocolo OSC
+Topología lógica básica de la arquitectura cliente-servidor. Protocolos TCP y UDP. Empaquetado
+OSC. Tipos de datos atómicos. Patrones de direcciones, mensajes y paquetes OSC. Etiquetas y
+argumentos OSC. Semántica de los datos OSC. Representación temporal del estándar NTP.
+Evaluación
+Se solicitará la realización de trabajos prácticos, parciales y ejercicios de aplicación, centrados en
+los contenidos desarrollados en el curso, y la realización de un trabajo práctico final. Las
+características de los trabajos, así como sus plazos de presentación, serán pautadas por el profesor a
+cargo del curso.
+Requisitos de aprobación / promoción
+• Asistencia al 75% de las clases dictadas, como mínimo.
+• Realización de todos los trabajos prácticos y lectura de bibliografía que el Profesor indique.
+• Realización de un trabajo final consistente en una monografía sobre alguno de los temas del
+seminario.
+Bibliografía
+Basso, Gustavo, 2006: Percepción Auditiva, Colección Música y Ciencia, UNQ, Argentina.
+Chowning, J., 1973: The Synthesis of Complex Audio Spectra by means of frecuency modulation
+(pp.526-534), JAES Nº7, USA.
+Chowning, J., y Bristow, D., 1986: FM theory and applications, Yamaha Music Foundation, Japon.
+Davis, G. y Jones, R., 1987: Sound Reinforcement Handbook, Hall Leonard Pub. Corp., Milkawee,
+USA.
+Di Liscia, O. P.: Sintesis y Procesamiento de Sonido y Musica a través del programa Csound.
+Colección Música y Ciencia, Editorial UNQ, 2004.
+Dodge, Ch. & Jerse, T.: Computer Music Synthesis, composition and performance, Shirmer Books,
+New York, 1985.
+Especificación del protocolo OSC 1.0: https://opensoundcontrol.stanford.edu/spec-1_0.html
+Jure Camacho, Luis, 2004: Implementación MIDI 1.0 Referencia comentada,
+http://www.eumus.edu.uy/docentes/jure/midi/midi.html
+Moore, F.R.: Elements of Computer Music , Prentice Hall., New Jersey, 1990.
+Penfold, R. A.: MIDI avanzado, RA-MA, Madrid, 1992.
+Pohlmann, Ken C., (2002), Principios de audio digital, Madrid McGraw-Hill Profesional Ed.
+Roads, Curtis, 1995: The computer Music Tutorial, MIT Press, Cambridge, MASS.
+Watkinson, John (Trad. Manuel Colmena Asencio), 1994: Audio Digital, Paraninfo, Madrid.
+Winsor, P. y De Lisa, G.: Computer Music in C, Windcrest TAB Books, Blue Ridge Summit, PA,
+1991.
