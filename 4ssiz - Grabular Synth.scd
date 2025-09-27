@@ -14,17 +14,17 @@ s.boot;
 ~gain = 0.3;
 ~grainCount = 1;  // Cantidad de granos simultáneos
 ~pitchVariation = 0.0;  // Variación aleatoria de pitch (0-100%)
-~useGenerator = false;  // Usar generador interno en lugar de sample
-~genFreq = 440;   // Frecuencia del generador
-~genWaveType = 0; // Tipo de onda del generador
+~segmentStart = 0.0;  // Inicio del segmento (0-1)
+~segmentEnd = 1.0;    // Fin del segmento (0-1)
 ~grains = List.new;
 ~isPlaying = false;
+~waveformData = nil;  // Datos de la forma de onda
 
 // Esperar a que el servidor esté listo
 s.waitForBoot({
     // Definición del SynthDef granular
     SynthDef(\granularLoFi, {
-        |buf = 0, grainRate = 20, grainDur = 0.1, posFreq = 5, gain = 0.3, gate = 1, grainCount = 1, pitchVariation = 0.0|
+        |buf = 0, grainRate = 20, grainDur = 0.1, posFreq = 5, gain = 0.3, gate = 1, grainCount = 1, pitchVariation = 0.0, segmentStart = 0.0, segmentEnd = 1.0|
         var pos, sig, pan, env, grains;
         
         // Envelope para control de gate
@@ -37,16 +37,16 @@ s.waitForBoot({
             // Determinar si este grano está activo
             grainActive = (i < grainCount);
             
-            // Posición aleatoria en el buffer controlada por LFO
-            grainPos = LFNoise1.kr(posFreq + (i * 0.1)).range(0, BufFrames.kr(buf));
+            // Posición aleatoria en el segmento seleccionado (más variación)
+            grainPos = LFNoise1.kr(posFreq + (i * 0.3)).range(segmentStart, segmentEnd) * BufFrames.kr(buf);
             
-            // Variación aleatoria de pitch para cada grano
-            grainPitch = 1.0 + (LFNoise1.kr(0.5 + (i * 0.2)) * pitchVariation);
+            // Variación aleatoria de pitch para cada grano (más variación)
+            grainPitch = 1.0 + (LFNoise1.kr(0.2 + (i * 0.4)) * pitchVariation);
             
-            // Síntesis granular individual
+            // Síntesis granular individual con trigger independiente
             grainSig = GrainBuf.ar(
                 numChannels: 1,
-                trigger: Impulse.kr(grainRate) * grainActive,
+                trigger: Impulse.kr(grainRate + (i * 0.1)) * grainActive,
                 dur: grainDur,
                 sndbuf: buf,
                 rate: grainPitch,  // Pitch individual por grano
@@ -54,8 +54,8 @@ s.waitForBoot({
                 interp: 2
             );
             
-            // Panning aleatorio para cada grano
-            grainPan = LFNoise1.kr(1 + (i * 0.3)).range(-1, 1);
+            // Panning aleatorio para cada grano (más variación)
+            grainPan = LFNoise1.kr(0.5 + (i * 0.5)).range(-1, 1);
             
             // Aplicar panning y activación
             Pan2.ar(grainSig * grainActive, grainPan);
@@ -65,9 +65,8 @@ s.waitForBoot({
         sig = Mix(grains);
         
         // Envío de triggers para visualización (uno por grano activo)
-        8.do { |i|
-            var grainActive = (i < grainCount);
-            SendTrig.kr(Impulse.kr(grainRate) * grainActive, i, grainDur);
+        grainCount.do { |i|
+            SendTrig.kr(Impulse.kr(grainRate + (i * 0.1)), i, grainDur);
         };
         
         // Aplicar ganancia y envelope
@@ -76,34 +75,13 @@ s.waitForBoot({
         Out.ar(0, sig);
     }).add;
     
-    // SynthDef para generadores internos
-    SynthDef(\generator, {
-        |freq = 440, amp = 0.3, gate = 1, waveType = 0|
-        var sig, env;
-        
-        env = EnvGen.kr(Env.asr(0.1, 1, 0.1), gate, doneAction: 2);
-        
-        sig = Select.ar(waveType, [
-            SinOsc.ar(freq),                           // 0: Sinusoidal
-            Saw.ar(freq),                              // 1: Diente de sierra
-            Pulse.ar(freq, 0.5),                       // 2: Cuadrada
-            WhiteNoise.ar,                             // 3: Ruido blanco
-            PinkNoise.ar,                              // 4: Ruido rosa
-            BrownNoise.ar,                             // 5: Ruido marrón
-            LFSaw.ar(freq) * SinOsc.ar(freq * 2),      // 6: FM simple
-            Formant.ar(freq, freq * 1.5, freq * 2)     // 7: Formantes
-        ]);
-        
-        sig = sig * amp * env;
-        Out.ar(0, sig);
-    }).add;
     
     // Definición del OSCdef para visualización
     OSCdef(\drawGrain, { |msg|
         var dur = msg[3];
         var now = Main.elapsedTime;
         var x = rrand(50, 550);  // Ajustado para el área de visualización
-        var y = rrand(50, 530);  // Ajustado para el área de visualización
+        var y = rrand(50, 350);  // Ajustado para el área de visualización (370-20)
         ~grains.add((time: now, dur: dur, x: x, y: y));
         // Forzar actualización inmediata
         if (~canvas.notNil) {
@@ -111,33 +89,27 @@ s.waitForBoot({
         };
     }, '/tr');
     
-    // Función para generar buffer sintético
-    ~generateBuffer = { |freq = 440, waveType = 0, duration = 2.0|
-        if (~b.notNil) { ~b.free };
-        ~b = Buffer.alloc(s, s.sampleRate * duration, 1);
-        ~b.sine1(1.0, true, true, true, 0, 0, {
-            "Buffer sintético generado: % Hz, tipo %".format(freq, waveType).postln;
-            if (~synth.notNil) { ~synth.free };
-            ~synth = Synth(\granularLoFi, [
-                \buf, ~b,
-                \grainRate, ~grainRate,
-                \grainDur, ~grainDur,
-                \posFreq, ~grainPosFreq,
-                \gain, ~gain,
-                \grainCount, ~grainCount,
-                \pitchVariation, ~pitchVariation
-            ]);
-            ~isPlaying = true;
-            "Sintetizador iniciado con generador.".postln;
-        });
-    };
 
     // Función para cargar archivo de audio
     ~loadSample = { |path|
+        var sampleSize;
         if (path.notNil) {
             if (~b.notNil) { ~b.free };
             ~b = Buffer.read(s, path, action: {
                 "Sample cargado: %".format(path.basename).postln;
+                
+                // Cargar datos de la forma de onda (muestreo para visualización)
+                sampleSize = min(~b.numFrames, 50000); // Aumentar a 50000 muestras
+                ~b.getn(0, sampleSize, { |data|
+                    ~waveformData = data;
+                    "Datos de forma de onda cargados: % muestras de % total".format(data.size, ~b.numFrames).postln;
+                    
+                    // Refrescar visualizador de onda
+                    if (~waveformView.notNil) {
+                        { ~waveformView.refresh }.defer;
+                    };
+                });
+                
                 if (~synth.notNil) { ~synth.free };
                 ~synth = Synth(\granularLoFi, [
                     \buf, ~b,
@@ -146,10 +118,19 @@ s.waitForBoot({
                     \posFreq, ~grainPosFreq,
                     \gain, ~gain,
                     \grainCount, ~grainCount,
-                    \pitchVariation, ~pitchVariation
+                    \pitchVariation, ~pitchVariation,
+                    \segmentStart, ~segmentStart,
+                    \segmentEnd, ~segmentEnd
                 ]);
-                ~isPlaying = true;
                 "Sintetizador iniciado.".postln;
+                
+                // Actualizar información del sample
+                if (~sampleInfoText.notNil) {
+                    { ~sampleInfoText.string_("Sample: %\nDuración: % seg".format(
+                        path.basename, 
+                        (~b.numFrames / s.sampleRate).round(0.01)
+                    )) }.defer;
+                };
             });
         };
     };
@@ -172,7 +153,7 @@ s.waitForBoot({
 
     // GUI Unificada
     ~createGUI = {
-        var win, canvas, controlsPanel, fileButton, genButton, playButton, stopButton, clearButton;
+        var win, canvas, waveformView, controlsPanel, fileButton, playButton, stopButton, clearButton;
         
         // Cerrar ventanas existentes
         if (~mainWin.notNil) { ~mainWin.close };
@@ -192,17 +173,11 @@ s.waitForBoot({
             .align_(\center)
             .background_(Color.grey(0.3));
         
-        // Botones para fuente de audio
-        fileButton = Button(controlsPanel, 140@30)
+        // Botón para cargar archivo
+        fileButton = Button(controlsPanel, 280@30)
             .states_([["Cargar Sample", Color.white, Color.blue]])
             .action_({
                 Dialog.openPanel({ |path| ~loadSample.value(path) });
-            });
-        
-        genButton = Button(controlsPanel, 140@30)
-            .states_([["Generar Audio", Color.white, Color.green]])
-            .action_({
-                ~generateBuffer.value(~genFreq, ~genWaveType, 2.0);
             });
         
         // Botón de control principal (toggle)
@@ -260,26 +235,130 @@ s.waitForBoot({
             if (~synth.notNil) { ~synth.set(\pitchVariation, v.value) }
         }).value_(~pitchVariation);
 
-        // Controles del generador
-        EZSlider(controlsPanel, 280@40, "Gen Freq", ControlSpec(50, 2000, \exp, 1), {
-            arg v; ~genFreq = v.value; 
-        }).value_(~genFreq);
+        // Controles de segmento
+        EZSlider(controlsPanel, 280@40, "Inicio", ControlSpec(0, 1, \lin, 0.01), {
+            arg v; ~segmentStart = v.value; 
+            if (~synth.notNil) { ~synth.set(\segmentStart, v.value) };
+            if (~waveformView.notNil) { { ~waveformView.refresh }.defer };
+        }).value_(~segmentStart);
 
-        EZSlider(controlsPanel, 280@40, "Gen Wave", ControlSpec(0, 7, \lin, 1), {
-            arg v; ~genWaveType = v.value; 
-        }).value_(~genWaveType);
+        EZSlider(controlsPanel, 280@40, "Fin", ControlSpec(0, 1, \lin, 0.01), {
+            arg v; ~segmentEnd = v.value; 
+            if (~synth.notNil) { ~synth.set(\segmentEnd, v.value) };
+            if (~waveformView.notNil) { { ~waveformView.refresh }.defer };
+        }).value_(~segmentEnd);
         
         // Información del sample
-        StaticText(controlsPanel, 280@60)
+        ~sampleInfoText = StaticText(controlsPanel, 280@60)
             .string_("No hay sample cargado")
             .font_(Font("Arial", 10))
             .align_(\center)
             .background_(Color.grey(0.4));
         
-        // Panel de visualización (lado derecho)
-        canvas = UserView(~mainWin, Rect(320, 10, 580, 580))
+        // Visualizador de onda (parte superior)
+        waveformView = UserView(~mainWin, Rect(320, 10, 580, 200))
+            .background_(Color.grey(0.1))
+            .canFocus_(false);
+        
+        ~waveformView = waveformView;
+        
+        // Panel de visualización de granos (parte inferior)
+        canvas = UserView(~mainWin, Rect(320, 220, 580, 370))
             .background_(Color.black)
             .canFocus_(false);
+        
+        // Función para dibujar la forma de onda
+        ~drawWaveform = {
+            var width = 580;
+            var height = 200;
+            var startX, endX;
+            var numFrames, stepSize, sampleData, sampleSize;
+            
+            // Limpiar canvas
+            Pen.fillColor = Color.grey(0.1);
+            Pen.fillRect(Rect(0, 0, width, height));
+            
+            
+            if (~waveformData.notNil and: { ~waveformData.size > 0 }) {
+                // Usar datos reales de la forma de onda
+                stepSize = ~waveformData.size / width;
+                
+                // Dibujar línea central
+                Pen.strokeColor = Color.grey(0.5);
+                Pen.width = 1;
+                Pen.moveTo(0@(height/2));
+                Pen.lineTo(width@(height/2));
+                Pen.stroke;
+                
+                // Dibujar forma de onda real del sample
+                Pen.strokeColor = Color.white;
+                Pen.width = 1;
+                
+                // Dibujar forma de onda real usando datos cargados
+                width.do { |x|
+                    var frameIndex = (x * stepSize).asInteger;
+                    var sample = if (frameIndex < ~waveformData.size) {
+                        ~waveformData[frameIndex]
+                    } { 0 };
+                    var y = height/2 + (sample * height * 0.4);
+                    
+                    if (x == 0) {
+                        Pen.moveTo(x@y);
+                    } {
+                        Pen.lineTo(x@y);
+                    };
+                };
+                Pen.stroke;
+                
+                // Dibujar segmento seleccionado
+                startX = ~segmentStart * width;
+                endX = ~segmentEnd * width;
+                
+                Pen.fillColor = Color.yellow.alpha_(0.3);
+                Pen.fillRect(Rect(startX, 0, endX - startX, height));
+                
+                // Dibujar líneas de selección
+                Pen.strokeColor = Color.yellow;
+                Pen.width = 2;
+                Pen.moveTo(startX@0);
+                Pen.lineTo(startX@height);
+                Pen.stroke;
+                
+                Pen.moveTo(endX@0);
+                Pen.lineTo(endX@height);
+                Pen.stroke;
+                
+                // Información del segmento
+                Pen.fillColor = Color.white;
+                Pen.font = Font("Arial", 12);
+                Pen.stringAtPoint("Inicio: %".format(~segmentStart.round(0.01)), 10@10);
+                Pen.stringAtPoint("Fin: %".format(~segmentEnd.round(0.01)), 10@30);
+                Pen.stringAtPoint("Duración: %".format((~segmentEnd - ~segmentStart).round(0.01)), 10@50);
+            } {
+                // Sin datos de forma de onda - mostrar mensaje
+                Pen.fillColor = Color.grey(0.5);
+                Pen.font = Font("Arial", 16);
+                Pen.stringAtPoint("Cargando forma de onda...", 200@90);
+                
+                // Dibujar segmento seleccionado incluso sin datos
+                startX = ~segmentStart * width;
+                endX = ~segmentEnd * width;
+                
+                Pen.fillColor = Color.yellow.alpha_(0.3);
+                Pen.fillRect(Rect(startX, 0, endX - startX, height));
+                
+                // Dibujar líneas de selección
+                Pen.strokeColor = Color.yellow;
+                Pen.width = 2;
+                Pen.moveTo(startX@0);
+                Pen.lineTo(startX@height);
+                Pen.stroke;
+                
+                Pen.moveTo(endX@0);
+                Pen.lineTo(endX@height);
+                Pen.stroke;
+            };
+        };
         
         // Función de dibujo separada
         ~drawGrains = {
@@ -288,7 +367,7 @@ s.waitForBoot({
             
             // Limpiar canvas
             Pen.fillColor = Color.black;
-            Pen.fillRect(Rect(0, 0, 580, 580));
+            Pen.fillRect(Rect(0, 0, 580, 370));
             
             // Dibujar granos
             if (~grains.notNil and: { ~grains.size > 0 }) {
@@ -319,10 +398,11 @@ s.waitForBoot({
             Pen.stringAtPoint("Granos activos: %".format(activeGrains), 10@10);
             Pen.stringAtPoint("Rate: % | Dur: % | LFO: %".format(~grainRate, ~grainDur, ~grainPosFreq), 10@35);
             Pen.stringAtPoint("Granos: % | Pitch Var: % | Total: %".format(~grainCount, (~pitchVariation * 100).round(1), ~grains.size), 10@60);
-            Pen.stringAtPoint("Gen: % Hz | Wave: %".format(~genFreq.round(1), ~genWaveType), 10@85);
+            Pen.stringAtPoint("Segmento: % - %".format((~segmentStart * 100).round(1), (~segmentEnd * 100).round(1)), 10@85);
         };
         
-        // Asignar función de dibujo
+        // Asignar funciones de dibujo
+        waveformView.drawFunc = ~drawWaveform;
         canvas.drawFunc = ~drawGrains;
         
         ~canvas = canvas;
@@ -342,11 +422,14 @@ s.waitForBoot({
                             age < grain[\dur];
                         };
                     };
-                    ~canvas.refresh;
+                    { ~canvas.refresh }.defer;
+                };
+                if (~waveformView.notNil) {
+                    { ~waveformView.refresh }.defer;
                 };
                 0.05.wait;
             }
-        }).play;
+        }).start(AppClock);
         
         // Mostrar ventana
         ~mainWin.front;
@@ -357,50 +440,9 @@ s.waitForBoot({
             if (~synth.notNil) { ~synth.free };
         };
     };
-
-    // Función de debug para verificar triggers
-    ~debugTriggers = {
-        "=== DEBUG TRIGGERS ===".postln;
-        "OSCdef registrado: %".format(OSCdef(\drawGrain).notNil).postln;
-        "Grains en lista: %".format(~grains.size).postln;
-        "Servidor corriendo: %".format(s.serverRunning).postln;
-        "Canvas definido: %".format(~canvas.notNil).postln;
-        "Refresh task corriendo: %".format(~refreshTask.notNil).postln;
-    };
-    
-    // Función para forzar actualización
-    ~forceRefresh = {
-        if (~canvas.notNil) {
-            ~canvas.refresh;
-            "Canvas actualizado forzadamente".postln;
-        } {
-            "Canvas no disponible".postln;
-        };
-    };
-    
-    // Función para actualizar la función de dibujo
-    ~updateDrawFunc = {
-        if (~canvas.notNil) {
-            ~canvas.drawFunc = ~drawGrains;
-            "Función de dibujo actualizada".postln;
-        };
-    };
-    
-    // Función para limpiar granos antiguos
-    ~cleanOldGrains = {
-        var now = Main.elapsedTime;
-        var oldSize = ~grains.size;
-        ~grains = ~grains.select { |grain|
-            var age = now - grain[\time];
-            age < grain[\dur];
-        };
-        "Granos limpiados: % -> %".format(oldSize, ~grains.size).postln;
-    };
-    
     
     // Crear la GUI
     ~createGUI.value;
     
     "Sistema inicializado correctamente.".postln;
-    "Usa ~debugTriggers.value para verificar el sistema.".postln;
 });
