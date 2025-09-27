@@ -12,6 +12,11 @@ s.boot;
 ~grainDur = 0.1;
 ~grainPosFreq = 5;
 ~gain = 0.3;
+~grainCount = 1;  // Cantidad de granos simultáneos
+~pitchVariation = 0.0;  // Variación aleatoria de pitch (0-100%)
+~useGenerator = false;  // Usar generador interno en lugar de sample
+~genFreq = 440;   // Frecuencia del generador
+~genWaveType = 0; // Tipo de onda del generador
 ~grains = List.new;
 ~isPlaying = false;
 
@@ -19,33 +24,77 @@ s.boot;
 s.waitForBoot({
     // Definición del SynthDef granular
     SynthDef(\granularLoFi, {
-        |buf = 0, grainRate = 20, grainDur = 0.1, posFreq = 5, gain = 0.3, gate = 1|
-        var pos, sig, pan, env;
+        |buf = 0, grainRate = 20, grainDur = 0.1, posFreq = 5, gain = 0.3, gate = 1, grainCount = 1, pitchVariation = 0.0|
+        var pos, sig, pan, env, grains;
         
         // Envelope para control de gate
         env = EnvGen.kr(Env.asr(0.1, 1, 0.1), gate, doneAction: 2);
         
-        // Posición aleatoria en el buffer controlada por LFO
-        pos = LFNoise1.kr(posFreq).range(0, BufFrames.kr(buf));
+        // Generar múltiples granos simultáneos
+        grains = Array.fill(8) { |i|
+            var grainPos, grainPan, grainSig, grainActive, grainPitch;
+            
+            // Determinar si este grano está activo
+            grainActive = (i < grainCount);
+            
+            // Posición aleatoria en el buffer controlada por LFO
+            grainPos = LFNoise1.kr(posFreq + (i * 0.1)).range(0, BufFrames.kr(buf));
+            
+            // Variación aleatoria de pitch para cada grano
+            grainPitch = 1.0 + (LFNoise1.kr(0.5 + (i * 0.2)) * pitchVariation);
+            
+            // Síntesis granular individual
+            grainSig = GrainBuf.ar(
+                numChannels: 1,
+                trigger: Impulse.kr(grainRate) * grainActive,
+                dur: grainDur,
+                sndbuf: buf,
+                rate: grainPitch,  // Pitch individual por grano
+                pos: grainPos / BufFrames.kr(buf),
+                interp: 2
+            );
+            
+            // Panning aleatorio para cada grano
+            grainPan = LFNoise1.kr(1 + (i * 0.3)).range(-1, 1);
+            
+            // Aplicar panning y activación
+            Pan2.ar(grainSig * grainActive, grainPan);
+        };
         
-        // Síntesis granular
-        sig = GrainBuf.ar(
-            numChannels: 1,
-            trigger: Impulse.kr(grainRate),
-            dur: grainDur,
-            sndbuf: buf,
-            rate: 1,
-            pos: pos / BufFrames.kr(buf),
-            interp: 2
-        );
-
-        // Envío de triggers para visualización
-        SendTrig.kr(Impulse.kr(grainRate), 0, grainDur);
+        // Sumar todos los granos
+        sig = Mix(grains);
         
-        // Panning aleatorio
-        pan = LFNoise1.kr(1).range(-1, 1);
-        sig = Pan2.ar(sig * gain * env, pan);
+        // Envío de triggers para visualización (uno por grano activo)
+        8.do { |i|
+            var grainActive = (i < grainCount);
+            SendTrig.kr(Impulse.kr(grainRate) * grainActive, i, grainDur);
+        };
+        
+        // Aplicar ganancia y envelope
+        sig = sig * gain * env;
 
+        Out.ar(0, sig);
+    }).add;
+    
+    // SynthDef para generadores internos
+    SynthDef(\generator, {
+        |freq = 440, amp = 0.3, gate = 1, waveType = 0|
+        var sig, env;
+        
+        env = EnvGen.kr(Env.asr(0.1, 1, 0.1), gate, doneAction: 2);
+        
+        sig = Select.ar(waveType, [
+            SinOsc.ar(freq),                           // 0: Sinusoidal
+            Saw.ar(freq),                              // 1: Diente de sierra
+            Pulse.ar(freq, 0.5),                       // 2: Cuadrada
+            WhiteNoise.ar,                             // 3: Ruido blanco
+            PinkNoise.ar,                              // 4: Ruido rosa
+            BrownNoise.ar,                             // 5: Ruido marrón
+            LFSaw.ar(freq) * SinOsc.ar(freq * 2),      // 6: FM simple
+            Formant.ar(freq, freq * 1.5, freq * 2)     // 7: Formantes
+        ]);
+        
+        sig = sig * amp * env;
         Out.ar(0, sig);
     }).add;
     
@@ -62,6 +111,27 @@ s.waitForBoot({
         };
     }, '/tr');
     
+    // Función para generar buffer sintético
+    ~generateBuffer = { |freq = 440, waveType = 0, duration = 2.0|
+        if (~b.notNil) { ~b.free };
+        ~b = Buffer.alloc(s, s.sampleRate * duration, 1);
+        ~b.sine1(1.0, true, true, true, 0, 0, {
+            "Buffer sintético generado: % Hz, tipo %".format(freq, waveType).postln;
+            if (~synth.notNil) { ~synth.free };
+            ~synth = Synth(\granularLoFi, [
+                \buf, ~b,
+                \grainRate, ~grainRate,
+                \grainDur, ~grainDur,
+                \posFreq, ~grainPosFreq,
+                \gain, ~gain,
+                \grainCount, ~grainCount,
+                \pitchVariation, ~pitchVariation
+            ]);
+            ~isPlaying = true;
+            "Sintetizador iniciado con generador.".postln;
+        });
+    };
+
     // Función para cargar archivo de audio
     ~loadSample = { |path|
         if (path.notNil) {
@@ -74,7 +144,9 @@ s.waitForBoot({
                     \grainRate, ~grainRate,
                     \grainDur, ~grainDur,
                     \posFreq, ~grainPosFreq,
-                    \gain, ~gain
+                    \gain, ~gain,
+                    \grainCount, ~grainCount,
+                    \pitchVariation, ~pitchVariation
                 ]);
                 ~isPlaying = true;
                 "Sintetizador iniciado.".postln;
@@ -100,7 +172,7 @@ s.waitForBoot({
 
     // GUI Unificada
     ~createGUI = {
-        var win, canvas, controlsPanel, fileButton, playButton, stopButton, clearButton, testButton;
+        var win, canvas, controlsPanel, fileButton, genButton, playButton, stopButton, clearButton;
         
         // Cerrar ventanas existentes
         if (~mainWin.notNil) { ~mainWin.close };
@@ -120,11 +192,17 @@ s.waitForBoot({
             .align_(\center)
             .background_(Color.grey(0.3));
         
-        // Botón para cargar archivo
-        fileButton = Button(controlsPanel, 280@30)
+        // Botones para fuente de audio
+        fileButton = Button(controlsPanel, 140@30)
             .states_([["Cargar Sample", Color.white, Color.blue]])
             .action_({
                 Dialog.openPanel({ |path| ~loadSample.value(path) });
+            });
+        
+        genButton = Button(controlsPanel, 140@30)
+            .states_([["Generar Audio", Color.white, Color.green]])
+            .action_({
+                ~generateBuffer.value(~genFreq, ~genWaveType, 2.0);
             });
         
         // Botón de control principal (toggle)
@@ -171,6 +249,25 @@ s.waitForBoot({
             arg v; ~gain = v.value; 
             if (~synth.notNil) { ~synth.set(\gain, v.value) }
         }).value_(~gain);
+
+        EZSlider(controlsPanel, 280@40, "Granos", ControlSpec(1, 8, \lin, 1), {
+            arg v; ~grainCount = v.value; 
+            if (~synth.notNil) { ~synth.set(\grainCount, v.value) }
+        }).value_(~grainCount);
+
+        EZSlider(controlsPanel, 280@40, "Pitch Var", ControlSpec(0, 1.0, \lin, 0.01), {
+            arg v; ~pitchVariation = v.value; 
+            if (~synth.notNil) { ~synth.set(\pitchVariation, v.value) }
+        }).value_(~pitchVariation);
+
+        // Controles del generador
+        EZSlider(controlsPanel, 280@40, "Gen Freq", ControlSpec(50, 2000, \exp, 1), {
+            arg v; ~genFreq = v.value; 
+        }).value_(~genFreq);
+
+        EZSlider(controlsPanel, 280@40, "Gen Wave", ControlSpec(0, 7, \lin, 1), {
+            arg v; ~genWaveType = v.value; 
+        }).value_(~genWaveType);
         
         // Información del sample
         StaticText(controlsPanel, 280@60)
@@ -221,7 +318,8 @@ s.waitForBoot({
             Pen.font = Font("Arial", 16);
             Pen.stringAtPoint("Granos activos: %".format(activeGrains), 10@10);
             Pen.stringAtPoint("Rate: % | Dur: % | LFO: %".format(~grainRate, ~grainDur, ~grainPosFreq), 10@35);
-            Pen.stringAtPoint("Total granos: %".format(~grains.size), 10@60);
+            Pen.stringAtPoint("Granos: % | Pitch Var: % | Total: %".format(~grainCount, (~pitchVariation * 100).round(1), ~grains.size), 10@60);
+            Pen.stringAtPoint("Gen: % Hz | Wave: %".format(~genFreq.round(1), ~genWaveType), 10@85);
         };
         
         // Asignar función de dibujo
