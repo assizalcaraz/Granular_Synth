@@ -99,16 +99,30 @@ s.waitForBoot({
                 "Sample cargado: %".format(path.basename).postln;
                 
                 // Cargar datos de la forma de onda (muestreo para visualización)
-                sampleSize = min(~b.numFrames, 50000); // Aumentar a 50000 muestras
-                ~b.getn(0, sampleSize, { |data|
-                    ~waveformData = data;
-                    "Datos de forma de onda cargados: % muestras de % total".format(data.size, ~b.numFrames).postln;
+                sampleSize = min(~b.numFrames, 2000); // Reducir a 2000 muestras para evitar overflow
+                
+                // Usar try-catch para manejar errores de buffer
+                try {
+                    ~b.getn(0, sampleSize, { |data|
+                        ~waveformData = data;
+                        "Datos de forma de onda cargados: % muestras de % total".format(data.size, ~b.numFrames).postln;
+                        
+                        // Refrescar visualizador de onda
+                        if (~waveformView.notNil) {
+                            { ~waveformView.refresh }.defer;
+                        };
+                    });
+                } { |error|
+                    "Error cargando datos de forma de onda: %".format(error).postln;
+                    // Crear datos de forma de onda de prueba
+                    ~waveformData = Array.fill(1000, { |i| sin(i * 0.1) });
+                    "Usando forma de onda de prueba".postln;
                     
                     // Refrescar visualizador de onda
                     if (~waveformView.notNil) {
                         { ~waveformView.refresh }.defer;
                     };
-                });
+                };
                 
                 if (~synth.notNil) { ~synth.free };
                 ~synth = Synth(\granularLoFi, [
