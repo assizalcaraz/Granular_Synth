@@ -303,45 +303,45 @@ SynthDef(\granularLoFi, {
         EZSlider(controlsPanel, 280@40, "Rate", ControlSpec(1, 100, \lin, 1), {
             arg v; ~grainRate = v.value; 
             ~updateSynth.value;
-        }).value_(~grainRate).labelColor_(Color.white);
+        }).value_(~grainRate).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         EZSlider(controlsPanel, 280@40, "Duración", ControlSpec(0.01, 0.5, \lin, 0.01), {
             arg v; ~grainDur = v.value;
             ~updateSynth.value;
-        }).value_(~grainDur).labelColor_(Color.white);
+        }).value_(~grainDur).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         EZSlider(controlsPanel, 280@40, "LFO Pos", ControlSpec(0.1, 20, \lin, 0.1), {
             arg v; ~grainPosFreq = v.value;
             ~updateSynth.value;
-        }).value_(~grainPosFreq).labelColor_(Color.white);
+        }).value_(~grainPosFreq).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         EZSlider(controlsPanel, 280@40, "Volumen", ControlSpec(0, 1, \lin, 0.01), {
             arg v; ~gain = v.value;
             ~updateSynth.value;
-        }).value_(~gain).labelColor_(Color.white);
+        }).value_(~gain).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         EZSlider(controlsPanel, 280@40, "Granos", ControlSpec(1, 8, \lin, 1), {
             arg v; ~grainCount = v.value;
             ~updateSynth.value; // Usar función de actualización
-        }).value_(~grainCount).labelColor_(Color.white);
+        }).value_(~grainCount).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         EZSlider(controlsPanel, 280@40, "Pitch Var", ControlSpec(0, 1.0, \lin, 0.01), {
             arg v; ~pitchVariation = v.value;
             ~updateSynth.value;
-        }).value_(~pitchVariation).labelColor_(Color.white);
+        }).value_(~pitchVariation).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         // Controles de segmento
         EZSlider(controlsPanel, 280@40, "Inicio", ControlSpec(0, 1, \lin, 0.01), {
             arg v; ~segmentStart = v.value;
             ~updateSynth.value;
             if (~waveformView.notNil) { { ~waveformView.refresh }.defer };
-        }).value_(~segmentStart).labelColor_(Color.white);
+        }).value_(~segmentStart).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         EZSlider(controlsPanel, 280@40, "Fin", ControlSpec(0, 1, \lin, 0.01), {
             arg v; ~segmentEnd = v.value;
             ~updateSynth.value;
             if (~waveformView.notNil) { { ~waveformView.refresh }.defer };
-        }).value_(~segmentEnd).labelColor_(Color.white);
+        }).value_(~segmentEnd).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
         // Información del sample
         ~sampleInfoText = StaticText(controlsPanel, 280@60)
