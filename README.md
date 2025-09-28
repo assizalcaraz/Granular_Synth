@@ -2,7 +2,7 @@
 ## Trabajo Final Integrador- Teoría del Audio Digital
 ### Universidad Nacional de las Artes - año 2025
 
-![Granular Synth GUI](Granular%20Synth%20-%20GUI2%20.png)
+![Granular Synth GUI](GUI4.png)
 
 ---
 
