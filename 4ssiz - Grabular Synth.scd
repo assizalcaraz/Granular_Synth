@@ -236,6 +236,9 @@ SynthDef(\granularLoFi, {
     // Función para limpiar la visualización
     ~clearGrains = {
         ~grains.clear;
+        if (~canvas.notNil) {
+            { ~canvas.refresh }.defer; // Forzar actualización del canvas
+        };
         "Visualización limpiada.".postln;
     };
 
