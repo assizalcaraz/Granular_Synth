@@ -13,7 +13,7 @@ s.boot;
 ~grainPosFreq = 5;
 ~gain = 0.3;
 ~grainCount = 8;  // Máximo de granos simultáneos
-~maxGrains = 300;  // Máximo total de granos en la lista
+~maxGrains = 300;  // Máximo de granos simultáneos (activos al mismo tiempo)
 ~pitchVariation = 0.3;  // Variación aleatoria de pitch (0-100%)
 ~segmentStart = 0.0;  // Inicio del segmento (0-1)
 ~segmentEnd = 1.0;    // Fin del segmento (0-1)
@@ -80,16 +80,27 @@ SynthDef(\granularLoFi, {
 }).add;
     
     
-    // Definición del OSCdef para visualización - ESTABILIZADO
+    // Definición del OSCdef para visualización - CORREGIDO
     OSCdef(\drawGrain, { |msg|
         var dur = msg[3];
         var grainId = msg[2]; // ID del grano (0-7)
         var now = Main.elapsedTime;
         var x = rrand(50, 550);
         var y = rrand(50, 350);
+        var activeGrains = 0;
         
-        // Solo agregar grano si no se ha alcanzado el máximo (verificación simple)
-        if (~grains.size < ~maxGrains) {
+        // Contar granos activos (no expirados)
+        if (~grains.notNil and: { ~grains.size > 0 }) {
+            ~grains.do { |grain|
+                var age = now - grain[\time];
+                if (age < grain[\dur]) {
+                    activeGrains = activeGrains + 1;
+                };
+            };
+        };
+        
+        // Solo agregar grano si no se ha alcanzado el máximo de granos simultáneos
+        if (activeGrains < ~maxGrains) {
             ~grains.add((time: now, dur: ~grainDur, x: x, y: y, id: grainId));
         };
         
@@ -206,6 +217,23 @@ SynthDef(\granularLoFi, {
             "Sintetizador detenido.".postln;
         };
     };
+    
+    // Función para actualizar parámetros del sintetizador
+    ~updateSynth = {
+        if (~synth.notNil and: { ~isPlaying }) {
+            ~synth.set(
+                \grainRate, ~grainRate,
+                \grainDur, ~grainDur,
+                \posFreq, ~grainPosFreq,
+                \gain, ~gain,
+                \grainCount, ~grainCount,
+                \pitchVariation, ~pitchVariation,
+                \segmentStart, ~segmentStart,
+                \segmentEnd, ~segmentEnd
+            );
+            "Sintetizador actualizado: Rate=%, Dur=%, LFO=%, Gain=%, Granos=%, Pitch=%, Segmento=%-%".format(~grainRate, ~grainDur, ~grainPosFreq, ~gain, ~grainCount, ~pitchVariation, ~segmentStart, ~segmentEnd).postln;
+        };
+    };
 
     // Función para limpiar la visualización
     ~clearGrains = {
@@ -273,44 +301,44 @@ SynthDef(\granularLoFi, {
         // Sliders de control
         EZSlider(controlsPanel, 280@40, "Rate", ControlSpec(1, 100, \lin, 1), {
             arg v; ~grainRate = v.value; 
-            if (~synth.notNil) { ~synth.set(\grainRate, v.value) }
+            ~updateSynth.value;
         }).value_(~grainRate);
 
         EZSlider(controlsPanel, 280@40, "Duración", ControlSpec(0.01, 0.5, \lin, 0.01), {
             arg v; ~grainDur = v.value; 
-            if (~synth.notNil) { ~synth.set(\grainDur, v.value) }
+            ~updateSynth.value;
         }).value_(~grainDur);
 
         EZSlider(controlsPanel, 280@40, "LFO Pos", ControlSpec(0.1, 20, \lin, 0.1), {
             arg v; ~grainPosFreq = v.value; 
-            if (~synth.notNil) { ~synth.set(\posFreq, v.value) }
+            ~updateSynth.value;
         }).value_(~grainPosFreq);
 
         EZSlider(controlsPanel, 280@40, "Volumen", ControlSpec(0, 1, \lin, 0.01), {
             arg v; ~gain = v.value; 
-            if (~synth.notNil) { ~synth.set(\gain, v.value) }
+            ~updateSynth.value;
         }).value_(~gain);
 
         EZSlider(controlsPanel, 280@40, "Granos", ControlSpec(1, 8, \lin, 1), {
             arg v; ~grainCount = v.value; 
-            if (~synth.notNil) { ~synth.set(\grainCount, v.value) }
+            ~updateSynth.value; // Usar función de actualización
         }).value_(~grainCount);
 
         EZSlider(controlsPanel, 280@40, "Pitch Var", ControlSpec(0, 1.0, \lin, 0.01), {
             arg v; ~pitchVariation = v.value; 
-            if (~synth.notNil) { ~synth.set(\pitchVariation, v.value) }
+            ~updateSynth.value;
         }).value_(~pitchVariation);
 
         // Controles de segmento
         EZSlider(controlsPanel, 280@40, "Inicio", ControlSpec(0, 1, \lin, 0.01), {
             arg v; ~segmentStart = v.value; 
-            if (~synth.notNil) { ~synth.set(\segmentStart, v.value) };
+            ~updateSynth.value;
             if (~waveformView.notNil) { { ~waveformView.refresh }.defer };
         }).value_(~segmentStart);
 
         EZSlider(controlsPanel, 280@40, "Fin", ControlSpec(0, 1, \lin, 0.01), {
             arg v; ~segmentEnd = v.value; 
-            if (~synth.notNil) { ~synth.set(\segmentEnd, v.value) };
+            ~updateSynth.value;
             if (~waveformView.notNil) { { ~waveformView.refresh }.defer };
         }).value_(~segmentEnd);
         
@@ -772,7 +800,8 @@ SynthDef(\granularLoFi, {
     ~createGUI.value;
     
     "Sistema inicializado correctamente.".postln;
-    "Sistema optimizado: Máximo % granos, basado en versión estable.".format(~maxGrains).postln;
+    "Sistema optimizado: Máximo % granos simultáneos, basado en versión estable.".format(~maxGrains).postln;
+    "Controles actualizados: Todos los sliders actualizan el sintetizador en tiempo real.".postln;
     "Usa ~testDrawing.value para probar el dibujo de granos.".postln;
     "Usa ~cleanExpiredGrains.value para limpiar granos expirados.".postln;
 });
