@@ -1,5 +1,5 @@
 // ===============================================
-// Assiz Alcaraz - Granular Synth
+// Assiz Alcaraz - Granular Synth V1.0
 // Trabajo Final Integrador - Teoría del Audio Digital
 // Universidad Nacional de las Artes - Año 2025
 // ===============================================
