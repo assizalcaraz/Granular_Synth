@@ -8,12 +8,13 @@
 s.boot;
 
 // Variables globales
-~grainRate = 50;
-~grainDur = 0.1;
+~grainRate = 20; // Tasa de granos moderada
+~grainDur = 0.3; // Duración fija de granos
 ~grainPosFreq = 5;
 ~gain = 0.3;
-~grainCount = 1;  // Cantidad de granos simultáneos
-~pitchVariation = 0.0;  // Variación aleatoria de pitch (0-100%)
+~grainCount = 8;  // Máximo de granos simultáneos
+~maxGrains = 300;  // Máximo total de granos en la lista
+~pitchVariation = 0.3;  // Variación aleatoria de pitch (0-100%)
 ~segmentStart = 0.0;  // Inicio del segmento (0-1)
 ~segmentEnd = 1.0;    // Fin del segmento (0-1)
 ~grains = List.new;
@@ -23,7 +24,7 @@ s.boot;
 // Esperar a que el servidor esté listo
 s.waitForBoot({
     // Definición del SynthDef granular
-    SynthDef(\granularLoFi, {
+SynthDef(\granularLoFi, {
         |buf = 0, grainRate = 20, grainDur = 0.1, posFreq = 5, gain = 0.3, gate = 1, grainCount = 1, pitchVariation = 0.0, segmentStart = 0.0, segmentEnd = 1.0|
         var pos, sig, pan, env, grains;
         
@@ -45,15 +46,15 @@ s.waitForBoot({
             
             // Síntesis granular individual con trigger independiente
             grainSig = GrainBuf.ar(
-                numChannels: 1,
+        numChannels: 1,
                 trigger: Impulse.kr(grainRate + (i * 0.1)) * grainActive,
-                dur: grainDur,
-                sndbuf: buf,
+        dur: grainDur,
+        sndbuf: buf,
                 rate: grainPitch,  // Pitch individual por grano
                 pos: grainPos / BufFrames.kr(buf),
-                interp: 2
-            );
-            
+        interp: 2
+    );
+
             // Panning aleatorio para cada grano (más variación)
             grainPan = LFNoise1.kr(0.5 + (i * 0.5)).range(-1, 1);
             
@@ -64,25 +65,34 @@ s.waitForBoot({
         // Sumar todos los granos
         sig = Mix(grains);
         
-        // Envío de triggers para visualización (uno por grano activo)
-        grainCount.do { |i|
-            SendTrig.kr(Impulse.kr(grainRate + (i * 0.1)), i, grainDur);
-        };
+    // Envío de triggers para visualización - ALTA DENSIDAD
+    // Enviar un trigger por cada grano individual generado
+    grainCount.do { |i|
+        var grainTrigger = Impulse.kr(grainRate);
+        var grainId = i;
+        SendTrig.kr(grainTrigger, grainId, grainDur);
+    };
         
         // Aplicar ganancia y envelope
         sig = sig * gain * env;
 
-        Out.ar(0, sig);
-    }).add;
+    Out.ar(0, sig);
+}).add;
     
     
-    // Definición del OSCdef para visualización
+    // Definición del OSCdef para visualización - ESTABILIZADO
     OSCdef(\drawGrain, { |msg|
         var dur = msg[3];
+        var grainId = msg[2]; // ID del grano (0-7)
         var now = Main.elapsedTime;
-        var x = rrand(50, 550);  // Ajustado para el área de visualización
-        var y = rrand(50, 350);  // Ajustado para el área de visualización (370-20)
-        ~grains.add((time: now, dur: dur, x: x, y: y));
+        var x = rrand(50, 550);
+        var y = rrand(50, 350);
+        
+        // Solo agregar grano si no se ha alcanzado el máximo (verificación simple)
+        if (~grains.size < ~maxGrains) {
+            ~grains.add((time: now, dur: ~grainDur, x: x, y: y, id: grainId));
+        };
+        
         // Forzar actualización inmediata
         if (~canvas.notNil) {
             { ~canvas.refresh }.defer;
@@ -93,9 +103,9 @@ s.waitForBoot({
     // Función para cargar archivo de audio
     ~loadSample = { |path|
         var sampleSize, step, indices;
-        if (path.notNil) {
-            if (~b.notNil) { ~b.free };
-            ~b = Buffer.read(s, path, action: {
+    if (path.notNil) {
+        if (~b.notNil) { ~b.free };
+        ~b = Buffer.read(s, path, action: {
                 "Sample cargado: %".format(path.basename).postln;
                 
                 // Esperar un momento para que el buffer se cargue completamente
@@ -163,11 +173,11 @@ s.waitForBoot({
                 }.defer; // Ejecutar después de un frame
                 
                 if (~synth.notNil) { ~synth.free };
-                ~synth = Synth(\granularLoFi, [
-                    \buf, ~b,
-                    \grainRate, ~grainRate,
-                    \grainDur, ~grainDur,
-                    \posFreq, ~grainPosFreq,
+            ~synth = Synth(\granularLoFi, [
+                \buf, ~b,
+                \grainRate, ~grainRate,
+                \grainDur, ~grainDur,
+                \posFreq, ~grainPosFreq,
                     \gain, ~gain,
                     \grainCount, ~grainCount,
                     \pitchVariation, ~pitchVariation,
@@ -243,14 +253,18 @@ s.waitForBoot({
                             \grainRate, ~grainRate,
                             \grainDur, ~grainDur,
                             \posFreq, ~grainPosFreq,
-                            \gain, ~gain
+                            \gain, ~gain,
+                            \grainCount, ~grainCount,
+                            \pitchVariation, ~pitchVariation,
+                            \segmentStart, ~segmentStart,
+                            \segmentEnd, ~segmentEnd
                         ]);
                         ~isPlaying = true;
                     };
                 } {
                     ~stopSynth.value;
-                };
-            });
+    };
+});
         
         clearButton = Button(controlsPanel, 90@30)
             .states_([["CLEAR", Color.white, Color.new(1, 0.5, 0)]])
@@ -360,7 +374,7 @@ s.waitForBoot({
         
         // Panel de visualización de granos (parte inferior)
         canvas = UserView(~mainWin, Rect(320, 220, 580, 370))
-            .background_(Color.black)
+    .background_(Color.black)
             .canFocus_(false);
         
         // Función para dibujar la forma de onda
@@ -479,16 +493,16 @@ s.waitForBoot({
             };
         };
         
-        // Función de dibujo separada
+        // Función de dibujo separada - BASADA EN VERSIÓN ESTABLE
         ~drawGrains = {
             var now = Main.elapsedTime;
             var activeGrains = 0;
             
             // Limpiar canvas
             Pen.fillColor = Color.black;
-            Pen.fillRect(Rect(0, 0, 580, 370));
+            Pen.fillRect(Rect(0, 0, 580, 580));
             
-            // Dibujar granos
+            // Dibujar granos activos
             if (~grains.notNil and: { ~grains.size > 0 }) {
                 ~grains.do { |grain|
                     var age = now - grain[\time];
@@ -496,7 +510,7 @@ s.waitForBoot({
                         var alpha = 1 - (age / grain[\dur]);
                         var x = grain[\x];
                         var y = grain[\y];
-                        var size = 20 + (grain[\dur] * 80);
+                        var size = 20 + (grain[\dur] * 80); // Tamaño variable como en versión estable
                         activeGrains = activeGrains + 1;
                         
                         // Grano principal
@@ -505,7 +519,7 @@ s.waitForBoot({
                         
                         // Borde del grano
                         Pen.strokeColor = Color.cyan.alpha_(alpha);
-                        Pen.width = 4;
+                        Pen.width = 4; // Borde más grueso como en versión estable
                         Pen.strokeOval(Rect(x - size/2, y - size/2, size, size));
                     };
                 };
@@ -516,8 +530,7 @@ s.waitForBoot({
             Pen.font = Font("Arial", 16);
             Pen.stringAtPoint("Granos activos: %".format(activeGrains), 10@10);
             Pen.stringAtPoint("Rate: % | Dur: % | LFO: %".format(~grainRate, ~grainDur, ~grainPosFreq), 10@35);
-            Pen.stringAtPoint("Granos: % | Pitch Var: % | Total: %".format(~grainCount, (~pitchVariation * 100).round(1), ~grains.size), 10@60);
-            Pen.stringAtPoint("Segmento: % - %".format((~segmentStart * 100).round(1), (~segmentEnd * 100).round(1)), 10@85);
+            Pen.stringAtPoint("Total granos: %".format(~grains.size), 10@60);
         };
         
         // Asignar funciones de dibujo
@@ -529,11 +542,11 @@ s.waitForBoot({
         // Confirmar creación del canvas
         "Canvas creado en posición: %".format(canvas.bounds).postln;
         
-        // Tarea de actualización de la visualización
+        // Tarea de actualización de la visualización - BASADA EN VERSIÓN ESTABLE
         ~refreshTask = Task({
             loop {
                 if (~canvas.notNil) {
-                    // Limpiar granos antiguos cada 2 segundos
+                    // Limpiar granos antiguos cada 2 segundos (como versión estable)
                     if (Main.elapsedTime % 2 < 0.05) {
                         var now = Main.elapsedTime;
                         ~grains = ~grains.select { |grain|
@@ -541,14 +554,14 @@ s.waitForBoot({
                             age < grain[\dur];
                         };
                     };
-                    { ~canvas.refresh }.defer;
+                    ~canvas.refresh; // Refresco directo como en versión estable
                 };
                 if (~waveformView.notNil) {
                     { ~waveformView.refresh }.defer;
                 };
-                0.05.wait;
+                0.05.wait; // Misma tasa que versión estable
             }
-        }).start(AppClock);
+        }).play; // Usar .play en lugar de .start(AppClock)
         
         // Mostrar ventana
         ~mainWin.front;
@@ -560,8 +573,206 @@ s.waitForBoot({
         };
     };
     
+    // Función de debug para verificar triggers
+    ~debugTriggers = {
+        "=== DEBUG TRIGGERS ===".postln;
+        "OSCdef registrado: %".format(OSCdef(\drawGrain).notNil).postln;
+        "OSCdef activo: %".format(OSCdef(\drawGrain).isActive).postln;
+        "Grains en lista: %".format(~grains.size).postln;
+        "Servidor corriendo: %".format(s.serverRunning).postln;
+        "Canvas definido: %".format(~canvas.notNil).postln;
+        "Refresh task corriendo: %".format(~refreshTask.notNil).postln;
+        "Sintetizador activo: %".format(~synth.notNil).postln;
+        "GrainCount configurado: %".format(~grainCount).postln;
+        "GrainRate configurado: %".format(~grainRate).postln;
+        "Buffer cargado: %".format(~b.notNil).postln;
+        if (~b.notNil) {
+            "Buffer frames: %".format(~b.numFrames).postln;
+        };
+        
+        // Verificar si hay mensajes OSC pendientes
+        "Verificando mensajes OSC...".postln;
+    };
+    
+    // Función para probar triggers manualmente
+    ~testOSC = {
+        var testMsg = ['/tr', 0, 0, 0.5]; // [path, nodeID, grainID, duration]
+        "=== PRUEBA OSC MANUAL ===".postln;
+        "Enviando mensaje de prueba: %".format(testMsg).postln;
+        OSCdef(\drawGrain).value(testMsg, 0, NetAddr("127.0.0.1", 57120));
+    };
+    
+    // Función para verificar sincronización audio-visual
+    ~checkSync = {
+        var now = Main.elapsedTime;
+        var activeGrains = 0;
+        
+        if (~grains.notNil) {
+        ~grains.do { |grain|
+            var age = now - grain[\time];
+            if (age < grain[\dur]) {
+                    activeGrains = activeGrains + 1;
+                };
+            };
+        };
+        
+        "=== SINCRONIZACIÓN ===".postln;
+        "Granos en lista: %".format(~grains.size).postln;
+        "Granos activos: %".format(activeGrains).postln;
+        "Tasa de granos configurada: %".format(~grainRate).postln;
+        "Duración de granos: %".format(~grainDur).postln;
+        "Granos simultáneos: %".format(~grainCount).postln;
+        "Tasa de refresco: 20 FPS".postln;
+    };
+    
+    // Función de prueba para agregar granos manualmente
+    ~testGrain = {
+        var now = Main.elapsedTime;
+        var x = rrand(50, 550);
+        var y = rrand(50, 350);
+        var dur = 5.0; // 5 segundos de duración para debug
+        
+        ~grains.add((time: now, dur: dur, x: x, y: y, id: 999));
+        "GRANO DE PRUEBA AGREGADO: Pos=(%,%), Duración=%, Tiempo=%".format(x, y, dur, now).postln;
+        
+        if (~canvas.notNil) {
+            { ~canvas.refresh }.defer;
+            "CANVAS REFRESHED MANUALMENTE".postln;
+        } {
+            "ERROR: Canvas no disponible".postln;
+        };
+    };
+    
+    // Función para simular triggers manualmente
+    ~simulateTrigger = {
+        var now = Main.elapsedTime;
+        var x = rrand(50, 550);
+        var y = rrand(50, 350);
+        var dur = 3.0;
+        
+        "SIMULANDO TRIGGER MANUAL".postln;
+        ~grains.add((time: now, dur: dur, x: x, y: y, id: 888));
+        "GRANO SIMULADO AGREGADO: Total=%".format(~grains.size).postln;
+        
+        if (~canvas.notNil) {
+            { ~canvas.refresh }.defer;
+        };
+    };
+    
+    // Función para probar el sistema completo
+    ~testSystem = {
+        "=== PRUEBA DEL SISTEMA DEBUG ===".postln;
+        "Canvas disponible: %".format(~canvas.notNil).postln;
+        "Grains lista: %".format(~grains.size).postln;
+        "Sintetizador activo: %".format(~synth.notNil).postln;
+        "OSCdef registrado: %".format(OSCdef(\drawGrain).notNil).postln;
+        
+        // Limpiar granos existentes
+        ~grains.clear;
+        "Lista de granos limpiada".postln;
+        
+        // Agregar grano de prueba
+        ~testGrain.value;
+        
+        // Simular trigger
+        ~simulateTrigger.value;
+        
+        // Verificar después de 2 segundos
+        { 
+            2.wait;
+            "Después de 2 segundos:".postln;
+            "Granos en lista: %".format(~grains.size).postln;
+            "Canvas disponible: %".format(~canvas.notNil).postln;
+            "Tiempo actual: %".format(Main.elapsedTime).postln;
+        }.fork;
+    };
+    
+    // Función para forzar dibujo manual
+    ~forceDraw = {
+        if (~canvas.notNil) {
+            "Forzando dibujo manual...".postln;
+            ~canvas.refresh;
+            "Dibujo forzado completado".postln;
+        } {
+            "ERROR: Canvas no disponible".postln;
+        };
+    };
+    
+    // Función para limpiar y reiniciar
+    ~resetGrains = {
+        ~grains.clear;
+        "Lista de granos limpiada".postln;
+        if (~canvas.notNil) {
+            ~canvas.refresh;
+        };
+    };
+    
+    // Función de test para verificar el sistema
+    ~testGrainSystem = {
+        var testMsg = ['/tr', 0, 0, 0.5];
+        
+        "=== TEST DEL SISTEMA DE GRANOS ===".postln;
+        "OSCdef activo: %".format(OSCdef(\drawGrain).isActive).postln;
+        "Canvas existe: %".format(~canvas.notNil).postln;
+        "Grains array existe: %".format(~grains.notNil).postln;
+        "Grains size: %".format(if (~grains.notNil) { ~grains.size } { "NIL" }).postln;
+        "Synth activo: %".format(~synth.notNil).postln;
+        "GrainRate: %, GrainDur: %, GrainCount: %".format(~grainRate, ~grainDur, ~grainCount).postln;
+        
+        // Simular un trigger manual
+        "Simulando trigger manual...".postln;
+        OSCdef(\drawGrain).value(testMsg, 0, NetAddr("127.0.0.1", 57120));
+    };
+    
+    // Función para simular granos manualmente
+    ~simulateGrain = {
+        var now = Main.elapsedTime;
+        var x = rrand(50, 550);
+        var y = rrand(50, 350);
+        
+        "SIMULANDO GRANO MANUAL".postln;
+        ~grains.add((time: now, dur: 2.0, x: x, y: y, id: 999));
+        
+        if (~canvas.notNil) {
+            { ~canvas.refresh }.defer;
+        };
+    };
+    
+    // Función de test para verificar el dibujo
+    ~testDrawing = {
+        var now = Main.elapsedTime;
+        "TEST DIBUJO: Agregando 5 granos de prueba".postln;
+        5.do {
+            var x = rrand(50, 550);
+            var y = rrand(50, 350);
+            ~grains.add((time: now, dur: 5.0, x: x, y: y, id: 3000 + rrand(0, 999)));
+        };
+        "TEST DIBUJO: Total granos: %".format(~grains.size).postln;
+        if (~canvas.notNil) {
+            { ~canvas.refresh }.defer;
+        };
+    };
+    
+    // Función simplificada para limpiar granos expirados
+    ~cleanExpiredGrains = {
+        var now = Main.elapsedTime;
+        if (~grains.notNil and: { ~grains.size > 0 }) {
+            var oldSize = ~grains.size;
+            ~grains = ~grains.select { |grain|
+                var age = now - grain[\time];
+                age < grain[\dur];
+            };
+            if (oldSize != ~grains.size) {
+                "Limpieza: % -> % granos".format(oldSize, ~grains.size).postln;
+            };
+        };
+    };
+    
     // Crear la GUI
     ~createGUI.value;
     
     "Sistema inicializado correctamente.".postln;
+    "Sistema optimizado: Máximo % granos, basado en versión estable.".format(~maxGrains).postln;
+    "Usa ~testDrawing.value para probar el dibujo de granos.".postln;
+    "Usa ~cleanExpiredGrains.value para limpiar granos expirados.".postln;
 });
