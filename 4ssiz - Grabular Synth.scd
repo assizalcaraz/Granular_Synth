@@ -65,13 +65,9 @@ SynthDef(\granularLoFi, {
         // Sumar todos los granos
         sig = Mix(grains);
         
-    // Envío de triggers para visualización - ALTA DENSIDAD
-    // Enviar un trigger por cada grano individual generado
-    grainCount.do { |i|
-        var grainTrigger = Impulse.kr(grainRate);
-        var grainId = i;
-        SendTrig.kr(grainTrigger, grainId, grainDur);
-    };
+    // Envío de triggers para visualización - CORREGIDO
+    // Enviar un trigger por cada ciclo de granos (no por cada grano individual)
+    SendTrig.kr(Impulse.kr(grainRate), 0, grainDur);
         
         // Aplicar ganancia y envelope
         sig = sig * gain * env;
@@ -83,10 +79,7 @@ SynthDef(\granularLoFi, {
     // Definición del OSCdef para visualización - CORREGIDO
     OSCdef(\drawGrain, { |msg|
         var dur = msg[3];
-        var grainId = msg[2]; // ID del grano (0-7)
         var now = Main.elapsedTime;
-        var x = rrand(50, 550);
-        var y = rrand(50, 350);
         var activeGrains = 0;
         
         // Contar granos activos (no expirados)
@@ -99,9 +92,14 @@ SynthDef(\granularLoFi, {
             };
         };
         
-        // Solo agregar grano si no se ha alcanzado el máximo de granos simultáneos
-        if (activeGrains < ~maxGrains) {
-            ~grains.add((time: now, dur: ~grainDur, x: x, y: y, id: grainId));
+        // Agregar tantos granos visuales como granos de audio se están generando
+        ~grainCount.do { |i|
+            if (activeGrains < ~maxGrains) {
+                var x = rrand(50, 550);
+                var y = rrand(50, 350);
+                ~grains.add((time: now, dur: ~grainDur, x: x, y: y, id: i));
+                activeGrains = activeGrains + 1;
+            };
         };
         
         // Forzar actualización inmediata
