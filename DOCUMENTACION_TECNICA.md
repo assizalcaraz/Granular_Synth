@@ -1,6 +1,6 @@
-# 4ssiz - Granular Synth
-## Trabajo Final - Teoría del Audio Digital
-### Universidad Nacional de las Artes
+# Assiz Alcaraz - Granular Synth
+## Trabajo Final Integrador- Teoría del Audio Digital
+### Universidad Nacional de las Artes - año 2025
 
 ---
 
@@ -12,7 +12,6 @@ Este proyecto implementa un **sintetizador granular** utilizando SuperCollider, 
 **Opción 2: Implementación y Documentación de un Sintetizador Híbrido**
 
 ---
-git 
 ## 2. FUNDAMENTOS TEÓRICOS
 
 ### 2.1 Síntesis Granular
@@ -87,7 +86,6 @@ SynthDef(\granularLoFi, {
 - **Visualización de forma de onda**: Muestra el sample completo con segmento seleccionable
 - **Selección de segmento**: Drag & drop para definir región de loop
 - **Actualización automática**: Task que refresca la visualización cada 50ms
-- **Sincronización perfecta**: Audio y visualización perfectamente sincronizados
 
 ### 3.3 Interfaz de Usuario
 - **GUI unificada**: Controles y visualización en una sola ventana
@@ -210,7 +208,7 @@ El proyecto cumple con los objetivos de la **Opción 2** al:
 - **Forma de onda completa**: Visualización del sample completo con segmento seleccionable
 - **Selección por drag & drop**: Interfaz intuitiva para definir región de loop
 - **Información en tiempo real**: Contador de granos activos y parámetros actuales
-- **Sincronización OSC**: Comunicación perfecta entre síntesis y visualización
+- **Sincronización OSC**: Comunicación entre síntesis y visualización
 
 ### 9.2 Gestión de Recursos
 - **Control de memoria**: Máximo 300 granos simultáneos para evitar sobrecarga
@@ -238,21 +236,8 @@ El proyecto cumple con los objetivos de la **Opción 2** al:
 ## 11. INFORMACIÓN DEL PROYECTO
 
 **Versión Final**: 1.0  
-**Fecha de Finalización**: Enero 2025  
-**Autor**: José Assi  
+**Fecha de Finalización**: Septiembre 2025  
+**Autor**: Alcaraz Baxter José Assiz   
 **Institución**: Universidad Nacional de las Artes (UNA)  
 **Materia**: Teoría del Audio Digital  
 **Modalidad**: Opción 2 - Implementación y Documentación de un Sintetizador Híbrido  
-
-### 11.1 Estado del Proyecto
-- ✅ **Sintetizador granular funcional** con múltiples granos simultáneos
-- ✅ **GUI unificada** con controles y visualización integrados
-- ✅ **Sincronización audio-visual** perfecta
-- ✅ **Control de segmento** con drag & drop
-- ✅ **Variación de pitch** por grano
-- ✅ **Gestión de memoria** optimizada
-- ✅ **Documentación técnica** completa
-
----
-
-*Documentación técnica generada para el Trabajo Final de Teoría del Audio Digital - UNA*
