@@ -2,6 +2,8 @@
 // Assiz Alcaraz - Granular Synth V1.0
 // Trabajo Final Integrador - Teoría del Audio Digital
 // Universidad Nacional de las Artes - Año 2025
+// Posgrado Especialización Sonido aplicado.a las Artes Digitales
+// Año 2025
 // ===============================================
 
 // Inicializar servidor
@@ -301,7 +303,7 @@ SynthDef(\granularLoFi, {
 
         // Sliders de control
         EZSlider(controlsPanel, 280@40, "Rate", ControlSpec(1, 100, \lin, 1), {
-            arg v; ~grainRate = v.value; 
+            arg v; ~grainRate = v.value;
             ~updateSynth.value;
         }).value_(~grainRate).setColors(Color.grey(0.2), Color.white, Color.grey(0.7), Color.white);
 
