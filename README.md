@@ -10,9 +10,6 @@
 
 Este proyecto implementa un **sintetizador granular** utilizando SuperCollider, aplicando los conceptos teóricos de la **Unidad 2: Técnicas de síntesis y procesamiento** del programa de Teoría del Audio Digital.
 
-### 1.1 Modalidad Elegida
-**Opción 2: Implementación y Documentación de un Sintetizador Híbrido**
-
 ---
 ## 2. FUNDAMENTOS TEÓRICOS
 
@@ -140,7 +137,7 @@ El sintetizador respeta el teorema de Nyquist-Shannon al trabajar con buffers de
 2. **Carga de sample**: Selección y carga de archivo de audio con visualización de forma de onda
 3. **Selección de segmento**: Drag & drop para definir región de loop
 4. **Síntesis**: Generación de múltiples granos simultáneos con parámetros ajustables
-5. **Visualización**: Representación gráfica en tiempo real con sincronización perfecta
+5. **Visualización**: Representación gráfica en tiempo real.
 6. **Control**: Modificación de parámetros en tiempo real con actualización inmediata
 
 ### 6.2 Gestión de Memoria
@@ -176,8 +173,6 @@ El sintetizador respeta el teorema de Nyquist-Shannon al trabajar con buffers de
 
 ## 8. CONCLUSIONES
 
-Este sintetizador granular avanzado demuestra la aplicación práctica de los conceptos teóricos de síntesis de sonido, específicamente:
-
 - **Síntesis granular**: Implementación directa de la técnica con múltiples granos simultáneos
 - **Modulación**: Uso de LFOs para control de parámetros y variación de pitch
 - **Procesamiento de señales**: Manipulación de buffers de audio con segmentación precisa
@@ -186,17 +181,15 @@ Este sintetizador granular avanzado demuestra la aplicación práctica de los co
 - **Control espacial**: Panning aleatorio y distribución dinámica del sonido
 
 ### 8.1 Logros Técnicos
-- **Sincronización perfecta**: Audio y visualización perfectamente sincronizados
-- **Múltiples granos**: Hasta 8 granos simultáneos con características independientes
+- **Sincronización**: Audio y visualización sincronizados
+- **Múltiples granos**: Hasta 8 voces simultáneas con características independientes
 - **Control de segmento**: Manipulación precisa de la región de loop
 - **Variación de pitch**: Cada grano puede tener pitch diferente
 - **Gestión de memoria**: Control eficiente de hasta 300 granos simultáneos
 - **Interfaz unificada**: GUI completa con controles y visualización integrados
 
 ### 8.2 Cumplimiento de Objetivos
-El proyecto cumple con los objetivos de la **Opción 2** al:
 - Implementar una técnica de síntesis específica (granular) con características avanzadas
-- Documentar exhaustivamente el código y la arquitectura del sistema
 - Proporcionar una herramienta funcional para la creación musical
 - Demostrar aplicación práctica de conceptos teóricos de audio digital
 - Incluir visualización y control en tiempo real
@@ -241,5 +234,5 @@ El proyecto cumple con los objetivos de la **Opción 2** al:
 **Fecha de Finalización**: Septiembre 2025  
 **Autor**: Alcaraz Baxter José Assiz   
 **Institución**: Universidad Nacional de las Artes (UNA)  
+**Posgrado**: Especialización en Sonido aplicado a las Artes Digitales
 **Materia**: Teoría del Audio Digital  
-**Modalidad**: Opción 2 - Implementación y Documentación de un Sintetizador Híbrido  
